@@ -4,8 +4,6 @@
 
 A Firestore implementation of the [HtPreferencesClient](https://github.com/headlines-toolkit/ht-preferences-client). Manages user preferences in Firestore.
 
-**Important:** This package is intended for private use within the Headlines Toolkit ecosystem and is hosted on GitHub. It is **not** published on `pub.dev`.
-
 ## Installation
 
 Since this package is not on `pub.dev`, add it as a Git dependency in your `pubspec.yaml`:
@@ -119,6 +117,6 @@ Refer to the `ht_preferences_client` package for details on the data models (`Ap
 
 ## License
 
-This software is licensed under the **PolyForm Free Trial License 1.0.0**.
+This package is licensed under the **PolyForm Free Trial License 1.0.0**.
 
 Please review the full [LICENSE](LICENSE) file for detailed terms and conditions before using this package.

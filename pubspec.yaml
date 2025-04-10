@@ -4,12 +4,15 @@ repository: https://github.com/headlines-toolkit/ht-preferences-firestore
 publish_to: none
 
 environment:
-  sdk: ^3.5.0
-  flutter: ^3.24.0
+  sdk: ^3.7.0
 
 dependencies:
+  cloud_firestore: ^5.6.6
   flutter:
     sdk: flutter
+  ht_preferences_client:
+    git:
+      url: https://github.com/headlines-toolkit/ht-preferences-client.git
 
 dev_dependencies:
   flutter_test:

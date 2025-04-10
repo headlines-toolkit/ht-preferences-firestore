@@ -1,5 +1,5 @@
 name: ht_preferences_firestore
-description: ...
+description: A Firestore implementation of the HtPreferencesClient. Manages user preferences in Firestore. Intended for private use via GitHub, not pub.dev. See LICENSE for usage terms (PolyForm Free Trial).
 repository: https://github.com/headlines-toolkit/ht-preferences-firestore
 publish_to: none
 

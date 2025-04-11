@@ -249,7 +249,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
       // If bookmarks don't exist yet, create the list with the new headline
       await _updateField(_bookmarkedHeadlinesField, [
         headline.toJson(),
-      ], 'Failed to add initial bookmark',);
+      ], 'Failed to add initial bookmark');
     } catch (e) {
       if (e is PreferenceUpdateException) rethrow;
       throw PreferenceUpdateException('Failed to add bookmark: $e');
@@ -375,7 +375,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
       // If history doesn't exist yet, create the list with the new headline.
       await _updateField(_headlineReadingHistoryField, [
         headline.toJson(),
-      ], 'Failed to add initial history item',);
+      ], 'Failed to add initial history item');
     } catch (e) {
       if (e is PreferenceUpdateException) rethrow;
       throw PreferenceUpdateException('Failed to add to history: $e');

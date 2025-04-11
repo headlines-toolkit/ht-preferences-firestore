@@ -1,6 +1,6 @@
 # ht_preferences_firestore
 
-![coverage: 97](https://img.shields.io/badge/coverage-97%-green)
+![coverage: 97](https://img.shields.io/badge/coverage-97-green)
 [![style: very good analysis](https://img.shields.io/badge/style-very_good_analysis-B22C89.svg)](https://pub.dev/packages/very_good_analysis) 
 [![License: PolyForm Free Trial 1.0.0](https://img.shields.io/badge/License-PolyForm%20Free%20Trial%201.0.0-blue)](https://polyformproject.org/licenses/free-trial/1.0.0)
 

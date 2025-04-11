@@ -1,5 +1,5 @@
 //
-// ignore_for_file: prefer_const_constructors, lines_longer_than_80_chars, avoid_redundant_argument_values, inference_failure_on_collection_literal
+// ignore_for_file: prefer_const_constructors, lines_longer_than_80_chars, avoid_redundant_argument_values, inference_failure_on_collection_literal, require_trailing_commas
 
 import 'package:cloud_firestore/cloud_firestore.dart' hide Source;
 import 'package:flutter_test/flutter_test.dart';
@@ -407,7 +407,7 @@ void main() {
         verify(
           () => mockDocRef.set({
             appSettingsField: testAppSettings.toJson(),
-          }, any(that: isA<SetOptions>()),),
+          }, any(that: isA<SetOptions>())),
         ).called(1);
       });
 

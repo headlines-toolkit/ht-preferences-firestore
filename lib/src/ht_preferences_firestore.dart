@@ -5,7 +5,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart'
     hide Source; // Hide Source from Firestore
-import 'package:ht_preferences_client/ht_preferences_client.dart';
+import 'package:ht_preferences_client/ht_preferences_client.dart'; // Import base exception
 
 /// {@template ht_preferences_firestore}
 /// A Firestore implementation of the [HtPreferencesClient].
@@ -50,24 +50,25 @@ class HtPreferencesFirestore implements HtPreferencesClient {
 
   /// Fetches the user's preferences document data.
   ///
-  /// Returns the document data as a Map or null if the document doesn't exist.
+  /// Returns the document data as a Map.
+  /// Throws a [PreferenceNotFoundException] if the document doesn't exist.
   /// Throws a [PreferenceUpdateException] if a Firestore error occurs.
-  Future<Map<String, dynamic>?> _getPreferencesData() async {
+  Future<Map<String, dynamic>> _getPreferencesData() async {
     try {
       final snapshot = await _getPreferencesDocRef().get();
-      if (!snapshot.exists) {
-        return null; // Or potentially throw a specific "NotFound" here?
-        // Let's handle field-specific NotFound in each getter.
+      if (!snapshot.exists || snapshot.data() == null) {
+        // Throw if the document doesn't exist or has no data
+        throw PreferenceNotFoundException(
+          'User preferences document not found for userId: $_userId',
+        );
       }
-      return snapshot.data();
+      return snapshot.data()!;
     } on FirebaseException catch (e) {
-      // Consider logging the error and stack trace
       throw PreferenceUpdateException(
         'Failed to fetch preferences data: ${e.message}',
       );
     } catch (e) {
       // Catch any other unexpected errors
-      // Consider logging the error and stack trace
       throw PreferenceUpdateException('An unexpected error occurred: $e');
     }
   }
@@ -77,12 +78,12 @@ class HtPreferencesFirestore implements HtPreferencesClient {
     Map<String, dynamic>? data,
     String fieldName,
     T Function(Map<String, dynamic> json) fromJson,
-    PreferenceNotFoundException notFoundException,
+    String notFoundMessage,
   ) {
     if (data == null ||
         !data.containsKey(fieldName) ||
         data[fieldName] == null) {
-      throw notFoundException;
+      throw PreferenceNotFoundException(notFoundMessage);
     }
     try {
       // Ensure the data is in the expected Map format
@@ -91,7 +92,6 @@ class HtPreferencesFirestore implements HtPreferencesClient {
       }
       return fromJson(data[fieldName] as Map<String, dynamic>);
     } catch (e) {
-      // Consider logging the error and stack trace
       throw PreferenceUpdateException(
         'Failed to deserialize field "$fieldName": $e',
       );
@@ -103,15 +103,12 @@ class HtPreferencesFirestore implements HtPreferencesClient {
     Map<String, dynamic>? data,
     String fieldName,
     T Function(Map<String, dynamic> json) fromJson,
-    PreferenceNotFoundException notFoundException,
+    String notFoundMessage,
   ) {
     if (data == null ||
         !data.containsKey(fieldName) ||
         data[fieldName] == null) {
-      // Return empty list if field doesn't exist, common for lists
-      return [];
-      // Or throw notFoundException if an empty list isn't desired on first load
-      // throw notFoundException;
+      throw PreferenceNotFoundException(notFoundMessage);
     }
     try {
       final listData = data[fieldName] as List<dynamic>?;
@@ -123,7 +120,6 @@ class HtPreferencesFirestore implements HtPreferencesClient {
           .map(fromJson)
           .toList();
     } catch (e) {
-      // Consider logging the error and stack trace
       throw PreferenceUpdateException(
         'Failed to deserialize list field "$fieldName": $e',
       );
@@ -134,19 +130,17 @@ class HtPreferencesFirestore implements HtPreferencesClient {
   Future<void> _updateField(
     String fieldName,
     dynamic value,
-    PreferenceUpdateException updateException,
+    String updateErrorMessage,
   ) async {
     try {
       await _getPreferencesDocRef().set(
         {fieldName: value},
         SetOptions(merge: true), // Use merge to avoid overwriting other fields
       );
-    } on FirebaseException {
-      // Consider logging the error and stack trace
-      throw updateException; // Throw the specific update exception
+    } on FirebaseException catch (e) {
+      throw PreferenceUpdateException('$updateErrorMessage: ${e.message}');
     } catch (e) {
-      // Consider logging the error and stack trace
-      throw PreferenceUpdateException('An unexpected error occurred: $e');
+      throw PreferenceUpdateException('$updateErrorMessage: $e');
     }
   }
 
@@ -157,7 +151,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
       data,
       _appSettingsField,
       AppSettings.fromJson,
-      AppSettingsNotFoundException('App settings not found.'),
+      'App settings not found.',
     );
   }
 
@@ -166,7 +160,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
     await _updateField(
       _appSettingsField,
       settings.toJson(),
-      AppSettingsUpdateException('Failed to update app settings.'),
+      'Failed to update app settings.',
     );
   }
 
@@ -177,7 +171,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
       data,
       _articleSettingsField,
       ArticleSettings.fromJson,
-      ArticleSettingsNotFoundException('Article settings not found.'),
+      'Article settings not found.',
     );
   }
 
@@ -186,7 +180,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
     await _updateField(
       _articleSettingsField,
       settings.toJson(),
-      ArticleSettingsUpdateException('Failed to update article settings.'),
+      'Failed to update article settings.',
     );
   }
 
@@ -197,7 +191,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
       data,
       _themeSettingsField,
       ThemeSettings.fromJson,
-      ThemeSettingsNotFoundException('Theme settings not found.'),
+      'Theme settings not found.',
     );
   }
 
@@ -206,7 +200,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
     await _updateField(
       _themeSettingsField,
       settings.toJson(),
-      ThemeSettingsUpdateException('Failed to update theme settings.'),
+      'Failed to update theme settings.',
     );
   }
 
@@ -217,7 +211,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
       data,
       _bookmarkedHeadlinesField,
       Headline.fromJson,
-      BookmarkedHeadlinesNotFoundException('Bookmarked headlines not found.'),
+      'Bookmarked headlines not found.',
     );
   }
 
@@ -233,19 +227,16 @@ class HtPreferencesFirestore implements HtPreferencesClient {
       await _updateField(
         _bookmarkedHeadlinesField,
         updatedBookmarks.map((h) => h.toJson()).toList(),
-        BookmarkedHeadlinesUpdateException('Failed to add bookmark.'),
+        'Failed to add bookmark.',
       );
     } on PreferenceNotFoundException {
       // If bookmarks don't exist yet, create the list with the new headline
-      await _updateField(
-        _bookmarkedHeadlinesField,
-        [headline.toJson()],
-        BookmarkedHeadlinesUpdateException('Failed to add initial bookmark.'),
-      );
+      await _updateField(_bookmarkedHeadlinesField, [
+        headline.toJson(),
+      ], 'Failed to add initial bookmark.',);
     } catch (e) {
-      // Rethrow specific update exception or a generic one
       if (e is PreferenceUpdateException) rethrow;
-      throw BookmarkedHeadlinesUpdateException('Failed to add bookmark: $e');
+      throw PreferenceUpdateException('Failed to add bookmark: $e');
     }
   }
 
@@ -262,16 +253,15 @@ class HtPreferencesFirestore implements HtPreferencesClient {
         await _updateField(
           _bookmarkedHeadlinesField,
           updatedBookmarks.map((h) => h.toJson()).toList(),
-          BookmarkedHeadlinesUpdateException('Failed to remove bookmark.'),
+          'Failed to remove bookmark.',
         );
       }
     } on PreferenceNotFoundException {
-      // List doesn't exist, nothing to remove
+      // List doesn't exist, nothing to remove.
       return;
     } catch (e) {
-      // Rethrow specific update exception or a generic one
       if (e is PreferenceUpdateException) rethrow;
-      throw BookmarkedHeadlinesUpdateException('Failed to remove bookmark: $e');
+      throw PreferenceUpdateException('Failed to remove bookmark: $e');
     }
   }
 
@@ -282,7 +272,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
       data,
       _followedSourcesField,
       Source.fromJson,
-      FollowedSourcesNotFoundException('Followed sources not found.'),
+      'Followed sources not found.',
     );
   }
 
@@ -291,7 +281,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
     await _updateField(
       _followedSourcesField,
       sources.map((s) => s.toJson()).toList(),
-      FollowedSourcesUpdateException('Failed to update followed sources.'),
+      'Failed to update followed sources.',
     );
   }
 
@@ -302,7 +292,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
       data,
       _followedCategoriesField,
       Category.fromJson,
-      FollowedCategoriesNotFoundException('Followed categories not found.'),
+      'Followed categories not found.',
     );
   }
 
@@ -311,9 +301,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
     await _updateField(
       _followedCategoriesField,
       categories.map((c) => c.toJson()).toList(),
-      FollowedCategoriesUpdateException(
-        'Failed to update followed categories.',
-      ),
+      'Failed to update followed categories.',
     );
   }
 
@@ -324,9 +312,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
       data,
       _followedEventCountriesField,
       Country.fromJson,
-      FollowedEventCountriesNotFoundException(
-        'Followed event countries not found.',
-      ),
+      'Followed event countries not found.',
     );
   }
 
@@ -335,9 +321,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
     await _updateField(
       _followedEventCountriesField,
       countries.map((c) => c.toJson()).toList(),
-      FollowedEventCountriesUpdateException(
-        'Failed to update followed event countries.',
-      ),
+      'Failed to update followed event countries.',
     );
   }
 
@@ -348,44 +332,37 @@ class HtPreferencesFirestore implements HtPreferencesClient {
       data,
       _headlineReadingHistoryField,
       Headline.fromJson,
-      HeadlineReadingHistoryNotFoundException(
-        'Headline reading history not found.',
-      ),
+      'Headline reading history not found.',
     );
   }
 
   @override
   Future<void> addHeadlineToHistory(Headline headline) async {
-    // Note: This simple implementation adds to the end.
     // The repository layer might enforce size limits (e.g., keep last N items).
     try {
       final currentHistory = await getHeadlineReadingHistory();
-      // Avoid adding duplicates if needed, or allow them
-      // if (currentHistory.any((h) => h.id == headline.id)) {
-      //   // Optionally move existing to end, or just ignore
-      //   return;
-      // }
-      final updatedHistory = [...currentHistory, headline];
+
+      // Remove existing entry if it exists, to move it to the top
+      currentHistory.removeWhere((h) => h.id == headline.id);
+
+      // Add the new headline to the beginning of the list.
+      final updatedHistory = [headline, ...currentHistory];
+
+      // Note: Size limit enforcement should ideally happen in the Repository layer.
+
       await _updateField(
         _headlineReadingHistoryField,
         updatedHistory.map((h) => h.toJson()).toList(),
-        HeadlineReadingHistoryUpdateException('Failed to add to history.'),
+        'Failed to add to history.',
       );
     } on PreferenceNotFoundException {
-      // If history doesn't exist yet, create the list with the new headline
-      await _updateField(
-        _headlineReadingHistoryField,
-        [headline.toJson()],
-        HeadlineReadingHistoryUpdateException(
-          'Failed to add initial history item.',
-        ),
-      );
+      // If history doesn't exist yet, create the list with the new headline.
+      await _updateField(_headlineReadingHistoryField, [
+        headline.toJson(),
+      ], 'Failed to add initial history item.',);
     } catch (e) {
-      // Rethrow specific update exception or a generic one
       if (e is PreferenceUpdateException) rethrow;
-      throw HeadlineReadingHistoryUpdateException(
-        'Failed to add to history: $e',
-      );
+      throw PreferenceUpdateException('Failed to add to history: $e');
     }
   }
 
@@ -403,20 +380,15 @@ class HtPreferencesFirestore implements HtPreferencesClient {
         await _updateField(
           _headlineReadingHistoryField,
           updatedHistory.map((h) => h.toJson()).toList(),
-          HeadlineReadingHistoryUpdateException(
-            'Failed to remove from history.',
-          ),
+          'Failed to remove from history.',
         );
       }
     } on PreferenceNotFoundException {
-      // List doesn't exist, nothing to remove
+      // List doesn't exist, nothing to remove.
       return;
     } catch (e) {
-      // Rethrow specific update exception or a generic one
       if (e is PreferenceUpdateException) rethrow;
-      throw HeadlineReadingHistoryUpdateException(
-        'Failed to remove from history: $e',
-      );
+      throw PreferenceUpdateException('Failed to remove from history: $e');
     }
   }
 
@@ -427,7 +399,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
       data,
       _feedSettingsField,
       FeedSettings.fromJson,
-      FeedSettingsNotFoundException('Feed settings not found.'),
+      'Feed settings not found.',
     );
   }
 
@@ -436,7 +408,7 @@ class HtPreferencesFirestore implements HtPreferencesClient {
     await _updateField(
       _feedSettingsField,
       settings.toJson(),
-      FeedSettingsUpdateException('Failed to update feed settings.'),
+      'Failed to update feed settings.',
     );
   }
 
@@ -447,20 +419,16 @@ class HtPreferencesFirestore implements HtPreferencesClient {
       data,
       _notificationSettingsField,
       NotificationSettings.fromJson,
-      NotificationSettingsNotFoundException('Notification settings not found.'),
+      'Notification settings not found.',
     );
   }
 
   @override
-  Future<void> setNotificationPreferences(
-    NotificationSettings preferences,
-  ) async {
+  Future<void> setNotificationSettings(NotificationSettings settings) async {
     await _updateField(
       _notificationSettingsField,
-      preferences.toJson(),
-      NotificationSettingsUpdateException(
-        'Failed to update notification settings.',
-      ),
+      settings.toJson(),
+      'Failed to update notification settings.',
     );
   }
 }

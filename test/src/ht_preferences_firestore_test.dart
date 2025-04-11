@@ -407,7 +407,7 @@ void main() {
         verify(
           () => mockDocRef.set({
             appSettingsField: testAppSettings.toJson(),
-          }, any(that: isA<SetOptions>())),
+          }, any(that: isA<SetOptions>()),),
         ).called(1);
       });
 
